@@ -43,7 +43,6 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@embedded-postgres/windows-x64": "^18.4.0-beta.17",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",
@@ -61,6 +60,9 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
+  },
+  "optionalDependencies": {
+    "@embedded-postgres/windows-x64": "^18.4.0-beta.17"
   },
   "allowScripts": {
     "@embedded-postgres/windows-x64@18.4.0-beta.17": true,

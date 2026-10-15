@@ -6,4 +6,6 @@
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--no-audit"
+
