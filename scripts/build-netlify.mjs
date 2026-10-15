@@ -1,0 +1,19 @@
+import { execSync } from "node:child_process";
+
+console.log("[netlify-build] Step 1: Generating Prisma client...");
+execSync("npx prisma generate", { stdio: "inherit" });
+
+if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== "") {
+  console.log("[netlify-build] Step 2: DATABASE_URL detected. Syncing schema to cloud database...");
+  try {
+    execSync("npx prisma db push --accept-data-loss", { stdio: "inherit" });
+    console.log("[netlify-build] Database schema synchronized successfully.");
+  } catch (err) {
+    console.warn("[netlify-build] Warning: Prisma db push failed, continuing build:", err.message);
+  }
+} else {
+  console.log("[netlify-build] Step 2: DATABASE_URL not set in build environment. Skipping schema push.");
+}
+
+console.log("[netlify-build] Step 3: Building Next.js application...");
+execSync("npx next build", { stdio: "inherit" });

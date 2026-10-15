@@ -18,22 +18,28 @@ export interface SessionUser {
 }
 
 export async function isMainPerson(user: { id: string; email: string }): Promise<boolean> {
-  const adminEmail = env().ADMIN_EMAIL;
-  if (adminEmail && user.email.toLowerCase() === adminEmail.toLowerCase()) {
-    return true;
+  try {
+    const adminEmail = env().ADMIN_EMAIL;
+    if (adminEmail && user.email.toLowerCase() === adminEmail.toLowerCase()) {
+      return true;
+    }
+    if (user.email.toLowerCase() === "owner@localhost") {
+      return true;
+    }
+    const autoEmail = env().AUTO_LOGIN_EMAIL;
+    if (autoEmail && user.email.toLowerCase() === autoEmail.toLowerCase()) {
+      return true;
+    }
+    if (!env().DATABASE_URL) return false;
+    const firstUser = await db().user.findFirst({
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+    return firstUser?.id === user.id;
+  } catch (err) {
+    console.error("[auth] isMainPerson check failed:", err);
+    return false;
   }
-  if (user.email.toLowerCase() === "owner@localhost") {
-    return true;
-  }
-  const autoEmail = env().AUTO_LOGIN_EMAIL;
-  if (autoEmail && user.email.toLowerCase() === autoEmail.toLowerCase()) {
-    return true;
-  }
-  const firstUser = await db().user.findFirst({
-    orderBy: { createdAt: "asc" },
-    select: { id: true },
-  });
-  return firstUser?.id === user.id;
 }
 
 export interface ActiveSession {
@@ -76,24 +82,30 @@ export async function destroySession(): Promise<void> {
 
 /** Resolves the current session from cookies. Memoised per request. */
 export const getSession = cache(async (): Promise<ActiveSession | null> => {
-  const store = await cookies();
-  const token = store.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
-  const session = await db().session.findUnique({
-    where: { id: sha256(token) },
-    include: { user: { select: { id: true, email: true, name: true } } },
-  });
-  if (!session) return null;
-  if (session.expiresAt.getTime() < Date.now()) {
-    await db().session.deleteMany({ where: { id: session.id } });
+  try {
+    const store = await cookies();
+    const token = store.get(SESSION_COOKIE)?.value;
+    if (!token) return null;
+    if (!env().DATABASE_URL) return null;
+    const session = await db().session.findUnique({
+      where: { id: sha256(token) },
+      include: { user: { select: { id: true, email: true, name: true } } },
+    });
+    if (!session) return null;
+    if (session.expiresAt.getTime() < Date.now()) {
+      await db().session.deleteMany({ where: { id: session.id } }).catch(() => {});
+      return null;
+    }
+    const isAdmin = await isMainPerson(session.user);
+    return {
+      sessionId: session.id,
+      csrfToken: session.csrfToken,
+      user: { ...session.user, isAdmin },
+    };
+  } catch (err) {
+    console.error("[auth] Failed to resolve session:", err);
     return null;
   }
-  const isAdmin = await isMainPerson(session.user);
-  return {
-    sessionId: session.id,
-    csrfToken: session.csrfToken,
-    user: { ...session.user, isAdmin },
-  };
 });
 
 /** For server components/pages: redirects to /login when not signed in. */

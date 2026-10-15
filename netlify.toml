@@ -1,9 +1,12 @@
 [build]
-  command = "prisma generate && next build"
+  command = "node scripts/build-netlify.mjs"
   publish = ".next"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[functions]
+  included_files = ["node_modules/.prisma/**/*", "prisma/**/*", "lib/generated/prisma/**/*"]
 
 [build.environment]
   NODE_VERSION = "22.12.0"
@@ -11,7 +14,3 @@
   SECRETS_SCAN_ENABLED = "false"
   SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache/**, .next/cache/**, **/.next/**, .netlify/**"
   SECRETS_SCAN_OMIT_KEYS = "SESSION_SECRET, TOKEN_ENCRYPTION_KEY"
-
-
-
-

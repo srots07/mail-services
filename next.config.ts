@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
   output: desktopBuild ? "standalone" : undefined,
   distDir: desktopBuild ? ".next-desktop" : ".next",
   poweredByHeader: false,
-  serverExternalPackages: ["pg", "@prisma/adapter-pg", "exceljs"],
+  serverExternalPackages: ["pg", "@prisma/adapter-pg", "@prisma/client", "exceljs"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

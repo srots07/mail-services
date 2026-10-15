@@ -5,11 +5,24 @@ const intFromEnv = (fallback: number, min: number, max: number) =>
   z
     .string()
     .optional()
-    .transform((v) => (v === undefined || v.trim() === "" ? fallback : Number(v)))
-    .pipe(z.number().int().min(min).max(max));
+    .transform((v) => {
+      if (v === undefined || v.trim() === "") return fallback;
+      const parsed = Number(v);
+      if (Number.isNaN(parsed)) return fallback;
+      return Math.min(Math.max(Math.round(parsed), min), max);
+    });
+
+const enumFromEnv = <T extends readonly string[]>(allowed: T, fallback: T[number]) =>
+  z
+    .string()
+    .optional()
+    .transform((v) => {
+      const val = v?.trim().toLowerCase();
+      return (val && (allowed as readonly string[]).includes(val) ? val : fallback) as T[number];
+    });
 
 const schema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  NODE_ENV: enumFromEnv(["development", "test", "production"] as const, "development"),
   DATABASE_URL: z.string().default(""),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
   APP_URL: z.string().default("http://localhost:3000"),
@@ -36,8 +49,8 @@ const schema = z.object({
   EMAIL_BATCH_DELAY_MS: intFromEnv(60000, 1000, 3600000),
   MAX_EMAIL_RETRIES: intFromEnv(3, 0, 10),
 
-  AI_PROVIDER: z.enum(["openrouter", "groq", "mock"]).default("openrouter"),
-  EMAIL_PROVIDER: z.enum(["gmail", "mock"]).default("gmail"),
+  AI_PROVIDER: enumFromEnv(["openrouter", "groq", "mock"] as const, "openrouter"),
+  EMAIL_PROVIDER: enumFromEnv(["gmail", "mock", "smtp"] as const, "gmail"),
 
   /** Set only by the Electron shell: the server runs on this PC for one local owner. */
   DESKTOP_MODE: z.string().default("false"),
@@ -61,7 +74,7 @@ const schema = z.object({
 export type ServerEnv = z.infer<typeof schema> & {
   isProduction: boolean;
   aiProvider: "openrouter" | "groq" | "mock";
-  emailProvider: "gmail" | "mock";
+  emailProvider: "gmail" | "mock" | "smtp";
   allowRegistration: boolean;
   autoLogin: boolean;
   desktopMode: boolean;
@@ -79,19 +92,20 @@ export function env(): ServerEnv {
   if (cached) return cached;
   const parsed = schema.safeParse(process.env);
   if (!parsed.success) {
-    const fields = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
-    throw new Error(`Invalid environment configuration: ${fields}`);
+    const fields = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ");
+    console.error(`[env] Invalid environment configuration: ${fields}`);
   }
-  const e = parsed.data;
+  const e = parsed.success ? parsed.data : schema.parse({});
   const isProduction = e.NODE_ENV === "production";
   const desktopMode = e.DESKTOP_MODE.toLowerCase() === "true" && e.DESKTOP_TOKEN.length >= 32;
+  const appUrl = (e.APP_URL || process.env.URL || process.env.DEPLOY_PRIME_URL || "http://localhost:3000").replace(/\/+$/, "");
   cached = {
     ...e,
-    APP_URL: e.APP_URL.replace(/\/+$/, ""),
+    APP_URL: appUrl,
     isProduction,
     // Mock providers are never allowed in production builds.
     aiProvider: isProduction ? (e.AI_PROVIDER === "mock" ? "openrouter" : e.AI_PROVIDER) : e.AI_PROVIDER,
-    emailProvider: isProduction ? "gmail" : e.EMAIL_PROVIDER,
+    emailProvider: isProduction ? (e.EMAIL_PROVIDER === "mock" ? "gmail" : e.EMAIL_PROVIDER) : e.EMAIL_PROVIDER,
     allowRegistration: !desktopMode && e.ALLOW_REGISTRATION.toLowerCase() !== "false",
     // Skipping sign-in is a local single-user convenience: dev builds, or the token-guarded desktop app.
     autoLogin: desktopMode || (!isProduction && e.AUTO_LOGIN.toLowerCase() === "true"),
