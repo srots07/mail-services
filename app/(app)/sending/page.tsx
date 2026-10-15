@@ -31,7 +31,7 @@ export default async function SendingPage() {
     campaignIds.length ? db().emailSend.count({ where: { campaignId: { in: campaignIds }, status: "FAILED" } }) : 0,
     campaignIds.length
       ? db().campaignContact.count({
-          where: { campaignId: { in: campaignIds }, status: { in: ["SCHEDULED", "SENDING", "APPROVED"] } },
+          where: { campaignId: { in: campaignIds }, status: { in: ["SCHEDULED", "SENDING"] } },
         })
       : 0,
     campaignIds.length
@@ -52,7 +52,7 @@ export default async function SendingPage() {
             campaign: {
               select: {
                 id: true,
-                name: true,
+                campaignName: true,
               },
             },
           },
@@ -150,7 +150,7 @@ export default async function SendingPage() {
                       </Badge>
                     </div>
                     <p className="type-caption text-muted mt-0.5">
-                      Provider: <span className="font-medium text-fg uppercase">{account.provider}</span> · Label: {account.label || "Primary"}
+                      Provider: <span className="font-medium text-fg uppercase">{account.provider}</span> · Name: {account.displayName || "Primary"}
                     </p>
                   </div>
                 </div>
@@ -220,7 +220,7 @@ export default async function SendingPage() {
                         <td className="px-4 py-3 text-muted">
                           {log.campaign ? (
                             <Link href={`/campaigns/${log.campaign.id}`} className="hover:text-accent hover:underline">
-                              {log.campaign.name}
+                              {log.campaign.campaignName}
                             </Link>
                           ) : (
                             <span className="text-subtle">Direct</span>
@@ -235,9 +235,11 @@ export default async function SendingPage() {
                               Delivered
                             </Badge>
                           ) : log.status === "FAILED" ? (
-                            <Badge tone="danger" dot title={log.errorMessage || "Failed"}>
-                              Failed
-                            </Badge>
+                            <span title={log.errorMessage || "Failed"}>
+                              <Badge tone="danger" dot>
+                                Failed
+                              </Badge>
+                            </span>
                           ) : (
                             <Badge tone="accent" dot>
                               {log.status}
