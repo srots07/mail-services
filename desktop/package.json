@@ -1,0 +1,10 @@
+{
+  "name": "email-campaign-manager-desktop",
+  "productName": "Sorts",
+  "version": "1.0.0",
+  "description": "Sorts: AI-personalised email campaigns you review, sent from your own Gmail.",
+  "author": "Sorts",
+  "private": true,
+  "main": "main.cjs",
+  "updateUrl": "http://localhost:3100/updates"
+}

@@ -1,0 +1,732 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CampaignStatus {
+  DRAFT
+  GENERATING
+  READY_FOR_REVIEW
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  PAUSED
+  FAILED
+}
+
+enum RecipientStatus {
+  NEW
+  GENERATING
+  READY
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum AiProviderChoice {
+  OPENROUTER
+  MOCK
+}
+
+enum EmailProviderChoice {
+  GMAIL
+  MOCK
+  SMTP
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SendKind {
+  CAMPAIGN
+  TEST
+}
+
+enum SendStatus {
+  SENDING
+  SENT
+  FAILED
+}
+
+enum EmailProviderType {
+  GMAIL
+  MICROSOFT
+  MOCK
+  SMTP
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+}
+
+enum LogCategory {
+  CSV_IMPORT
+  AI_GENERATION
+  AI_ERROR
+  EMAIL_SEND
+  EMAIL_FAILURE
+  RETRY
+  AUTH
+  CAMPAIGN_STATE
+  RESEARCH
+}
+
+enum CampaignKind {
+  STANDARD
+  COMPANY
+  BULK
+}
+
+/// Where a bulk-outreach recipient's address came from.
+enum EmailSource {
+  CSV
+  WEBSITE
+  MANUAL
+  NOT_FOUND
+}
+
+enum SubjectMode {
+  FIXED
+  AI
+}
+
+enum ResearchProviderChoice {
+  LIVE
+  MOCK
+}
+
+enum ResearchStatus {
+  NOT_STARTED
+  SEARCHING
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
+enum ContactDiscoveryStatus {
+  NOT_FOUND
+  FOUND
+  VERIFIED
+  NEEDS_REVIEW
+}
+
+enum ContractStatus {
+  FOUND
+  NOT_FOUND
+}
+
+enum DraftStatus {
+  DRAFT
+  READY_FOR_REVIEW
+  APPROVED
+  REJECTED
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+enum EmailConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum SourceType {
+  OFFICIAL
+  GOVERNMENT
+  THIRD_PARTY
+  USER_SUPPLIED
+}
+
+enum ContactOrigin {
+  IMPORTED
+  DISCOVERED
+}
+
+enum AiLogStatus {
+  SUCCESS
+  RETRY
+  FAILED
+}
+
+model User {
+  id                        String                  @id @default(cuid())
+  email                     String                  @unique
+  name                      String?
+  passwordHash              String                  @map("password_hash")
+  /// Provider choices from Settings; null falls back to AI_PROVIDER / EMAIL_PROVIDER. Ignored in production.
+  aiProvider                AiProviderChoice?       @map("ai_provider")
+  emailProvider             EmailProviderChoice?    @map("email_provider")
+  researchProvider          ResearchProviderChoice? @map("research_provider")
+  /// The one master email body used for every researched company.
+  companyEmailBody          String?                 @map("company_email_body")
+  companyEmailBodyUpdatedAt DateTime?               @map("company_email_body_updated_at")
+  /// Credit system: $1 = 5 campaign runs
+  campaignCredits           Int                     @default(5) @map("campaign_credits")
+  campaignsUsed             Int                     @default(0) @map("campaigns_used")
+  createdAt                 DateTime                @default(now()) @map("created_at")
+  updatedAt                 DateTime                @updatedAt @map("updated_at")
+
+  sessions          Session[]
+  emailAccounts     EmailAccount[]
+  contacts          Contact[]
+  campaigns         Campaign[]
+  activityLogs      ActivityLog[]
+  companies         Company[]
+  senderProfiles    SenderProfile[]
+  campaignTemplates CampaignTemplate[]
+  upiPayments       UpiPayment[]
+
+  @@map("users")
+}
+
+model UpiPayment {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  amount         Float    @default(85.0)
+  creditsGranted Int      @default(5) @map("credits_granted")
+  utr            String   @map("utr")
+  screenshotData String?  @map("screenshot_data")
+  status         String   @default("VERIFIED")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([utr])
+  @@map("upi_payments")
+}
+
+model Session {
+  /// SHA-256 hash of the session token; the raw token only lives in the cookie.
+  id        String   @id
+  userId    String   @map("user_id")
+  csrfToken String   @map("csrf_token")
+  userAgent String?  @map("user_agent")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model EmailAccount {
+  id              String            @id @default(cuid())
+  userId          String            @map("user_id")
+  provider        EmailProviderType
+  email           String
+  displayName     String?           @map("display_name")
+  /// AES-256-GCM encrypted, never returned to the client.
+  accessTokenEnc  String?           @map("access_token_enc")
+  /// AES-256-GCM encrypted, never returned to the client.
+  refreshTokenEnc String?           @map("refresh_token_enc")
+  tokenExpiresAt  DateTime?         @map("token_expires_at")
+  scope           String?
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+
+  @@unique([userId, provider])
+  @@map("email_accounts")
+}
+
+model Contact {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  /// Null only for bulk-outreach rows whose address has not been found or approved yet.
+  email             String?
+  companyName       String?  @map("company_name")
+  companyWebsite    String?  @map("company_website")
+  toPersonName      String?  @map("to_person_name")
+  fromPersonName    String?  @map("from_person_name")
+  purposeReason     String?  @map("purpose_reason")
+  tone              String?
+  keyPoints         String?  @map("key_points")
+  context           String?
+  subjectContext    String?  @map("subject_context")
+  additionalDetails String?  @map("additional_details")
+  /// A ready-written email body from the CSV; the AI only lightly adapts it per recipient.
+  emailBody         String?  @map("email_body")
+  /// Every CSV column that was not mapped to a named field, keyed by its original header.
+  customFields      Json?    @map("custom_fields")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignContacts CampaignContact[]
+
+  @@unique([userId, email])
+  @@index([email])
+  @@map("contacts")
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  userId         String         @map("user_id")
+  campaignName   String         @map("campaign_name")
+  kind           CampaignKind   @default(STANDARD)
+  description    String?
+  emailTemplate  String?        @map("email_template")
+  aiPrompt       String?        @map("ai_prompt")
+  targetWords    Int?           @map("target_words")
+  status         CampaignStatus @default(DRAFT)
+  promptVersion  Int            @default(1) @map("prompt_version")
+  totalContacts  Int            @default(0) @map("total_contacts")
+  generatedCount Int            @default(0) @map("generated_count")
+  approvedCount  Int            @default(0) @map("approved_count")
+  sentCount      Int            @default(0) @map("sent_count")
+  failedCount    Int            @default(0) @map("failed_count")
+
+  generationPaused       Boolean   @default(false) @map("generation_paused")
+  generationPausedReason String?   @map("generation_paused_reason")
+  senderAccountId        String?   @map("sender_account_id")
+  sendConfirmedAt        DateTime? @map("send_confirmed_at")
+  sendStartedAt          DateTime? @map("send_started_at")
+  completedAt            DateTime? @map("completed_at")
+  cancelledAt            DateTime? @map("cancelled_at")
+  nextBatchAt            DateTime? @map("next_batch_at")
+  batchDelayMs           Int?      @map("batch_delay_ms")
+  pausedReason           String?   @map("paused_reason")
+  scheduleStartAt        DateTime? @map("schedule_start_at")
+  sendIntervalSec        Int?      @map("send_interval_sec")
+  scheduleTimezone       String?   @map("schedule_timezone")
+
+  /// Bulk outreach: ONE body for every row, kept exactly; only placeholders are replaced.
+  bulkBody            String?      @map("bulk_body")
+  subjectMode         SubjectMode? @map("subject_mode")
+  subjectTemplate     String?      @map("subject_template")
+  aiPersonalization   Boolean      @default(false) @map("ai_personalization")
+  aiInstructions      String?      @map("ai_instructions")
+  productLineFallback String?      @map("product_line_fallback")
+  senderProfileId     String?      @map("sender_profile_id")
+  /// Sender values frozen when emails are generated, so later profile edits never change drafts.
+  senderSnapshot      Json?        @map("sender_snapshot")
+  templateId          String?      @map("template_id")
+  /// Copied on every email of the campaign (one email per recipient, same CC on each).
+  ccEmails            String[]     @default([]) @map("cc_emails")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  senderAccount    EmailAccount?           @relation(fields: [senderAccountId], references: [id], onDelete: SetNull)
+  senderProfile    SenderProfile?          @relation(fields: [senderProfileId], references: [id], onDelete: SetNull)
+  template         CampaignTemplate?       @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  campaignContacts CampaignContact[]
+  promptVersions   CampaignPromptVersion[]
+  emailSends       EmailSend[]
+  aiLogs           AiGenerationLog[]
+  activityLogs     ActivityLog[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("campaigns")
+}
+
+model CampaignPromptVersion {
+  id            String   @id @default(cuid())
+  campaignId    String   @map("campaign_id")
+  version       Int
+  aiPrompt      String?  @map("ai_prompt")
+  emailTemplate String?  @map("email_template")
+  targetWords   Int?     @map("target_words")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, version])
+  @@map("campaign_prompt_versions")
+}
+
+model CampaignContact {
+  id                  String          @id @default(cuid())
+  campaignId          String          @map("campaign_id")
+  contactId           String          @map("contact_id")
+  status              RecipientStatus @default(NEW)
+  approvalStatus      ApprovalStatus  @default(PENDING) @map("approval_status")
+  currentEmailId      String?         @unique @map("current_email_id")
+  queuedForGeneration Boolean         @default(false) @map("queued_for_generation")
+  generationAttempts  Int             @default(0) @map("generation_attempts")
+  generationError     String?         @map("generation_error")
+  errorMessage        String?         @map("error_message")
+  retryCount          Int             @default(0) @map("retry_count")
+  sentAt              DateTime?       @map("sent_at")
+  providerMessageId   String?         @map("provider_message_id")
+  lockedAt            DateTime?       @map("locked_at")
+  nextAttemptAt       DateTime?       @map("next_attempt_at")
+  scheduledAt         DateTime?       @map("scheduled_at")
+  /// Set for rows of a COMPANY campaign (sent from an approved company email draft).
+  companyId           String?         @map("company_id")
+  emailDraftId        String?         @map("email_draft_id")
+  /// Bulk outreach: where the address came from; WEBSITE/MANUAL addresses need emailApprovedAt.
+  emailSource         EmailSource?    @map("email_source")
+  emailSourceUrl      String?         @map("email_source_url")
+  /// Best public address found by research (only offered when the CSV had no email).
+  discoveredEmail     String?         @map("discovered_email")
+  emailApprovedAt     DateTime?       @map("email_approved_at")
+  researchCompanyId   String?         @map("research_company_id")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  campaign        Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact         Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  company         Company?          @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  researchCompany Company?          @relation("BulkResearch", fields: [researchCompanyId], references: [id], onDelete: SetNull)
+  emailDraft      EmailDraft?       @relation(fields: [emailDraftId], references: [id], onDelete: SetNull)
+  currentEmail    GeneratedEmail?   @relation("CurrentEmail", fields: [currentEmailId], references: [id], onDelete: SetNull)
+  emails          GeneratedEmail[]  @relation("EmailVersions")
+  sends           EmailSend[]
+  aiLogs          AiGenerationLog[]
+
+  @@unique([campaignId, contactId])
+  @@unique([campaignId, companyId])
+  @@index([companyId])
+  @@index([researchCompanyId])
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([campaignId, status])
+  @@index([queuedForGeneration, status])
+  @@index([status, scheduledAt])
+  @@map("campaign_contacts")
+}
+
+model GeneratedEmail {
+  id                String   @id @default(cuid())
+  campaignContactId String   @map("campaign_contact_id")
+  version           Int
+  subject           String
+  body              String
+  model             String
+  promptVersion     Int      @map("prompt_version")
+  /// Exact prompt sent to the model, so later prompt edits never change history.
+  promptSnapshot    String   @map("prompt_snapshot")
+  editedByUser      Boolean  @default(false) @map("edited_by_user")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  campaignContact CampaignContact   @relation("EmailVersions", fields: [campaignContactId], references: [id], onDelete: Cascade)
+  currentFor      CampaignContact?  @relation("CurrentEmail")
+  sends           EmailSend[]
+  aiLogs          AiGenerationLog[]
+
+  @@unique([campaignContactId, version])
+  @@map("generated_emails")
+}
+
+model EmailSend {
+  id                String            @id @default(cuid())
+  campaignId        String            @map("campaign_id")
+  campaignContactId String?           @map("campaign_contact_id")
+  generatedEmailId  String?           @map("generated_email_id")
+  kind              SendKind
+  status            SendStatus
+  provider          EmailProviderType
+  fromEmail         String            @map("from_email")
+  toEmail           String            @map("to_email")
+  ccEmails          String[]          @default([]) @map("cc_emails")
+  subject           String
+  body              String
+  attempt           Int               @default(1)
+  providerMessageId String?           @map("provider_message_id")
+  errorMessage      String?           @map("error_message")
+  sentAt            DateTime?         @map("sent_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  campaign        Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignContact CampaignContact? @relation(fields: [campaignContactId], references: [id], onDelete: SetNull)
+  generatedEmail  GeneratedEmail?  @relation(fields: [generatedEmailId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([sentAt])
+  @@index([campaignId, kind])
+  @@index([campaignContactId])
+  @@map("email_sends")
+}
+
+model AiGenerationLog {
+  id                String      @id @default(cuid())
+  campaignId        String      @map("campaign_id")
+  campaignContactId String?     @map("campaign_contact_id")
+  generatedEmailId  String?     @map("generated_email_id")
+  status            AiLogStatus
+  model             String
+  promptVersion     Int         @map("prompt_version")
+  prompt            String
+  attempt           Int         @default(1)
+  httpStatus        Int?        @map("http_status")
+  errorMessage      String?     @map("error_message")
+  latencyMs         Int?        @map("latency_ms")
+  promptTokens      Int?        @map("prompt_tokens")
+  completionTokens  Int?        @map("completion_tokens")
+  generatedAt       DateTime    @default(now()) @map("generation_timestamp")
+
+  campaign        Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignContact CampaignContact? @relation(fields: [campaignContactId], references: [id], onDelete: SetNull)
+  generatedEmail  GeneratedEmail?  @relation(fields: [generatedEmailId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, generatedAt])
+  @@index([campaignContactId])
+  @@map("ai_generation_logs")
+}
+
+model ActivityLog {
+  id         String      @id @default(cuid())
+  userId     String?     @map("user_id")
+  campaignId String?     @map("campaign_id")
+  category   LogCategory
+  level      LogLevel    @default(INFO)
+  message    String
+  metadata   Json?
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@index([userId, createdAt])
+  @@map("activity_logs")
+}
+
+model Company {
+  id             String                  @id @default(cuid())
+  userId         String                  @map("user_id")
+  importBatchId  String?                 @map("import_batch_id")
+  /// Working values (taken from the upload, trimmed only). The untouched upload is in originalRow.
+  name           String
+  website        String?
+  description    String?
+  contactName    String?                 @map("contact_name")
+  /// Exactly as typed in the uploaded file (never lowercased or corrected).
+  knownEmail     String?                 @map("known_email")
+  subject        String?
+  notes          String?
+  /// The user's own email body: the master text for this company's email.
+  originalBody   String                  @map("original_body")
+  /// Every uploaded cell exactly as it was, keyed by original header.
+  /// json (not jsonb) keeps the uploaded column order and text byte-for-byte.
+  originalRow    Json                    @map("original_row") @db.Json
+  researchStatus ResearchStatus          @default(NOT_STARTED) @map("research_status")
+  contractStatus ContractStatus?         @map("contract_status")
+  contactStatus  ContactDiscoveryStatus? @map("contact_status")
+  researchQueued Boolean                 @default(false) @map("research_queued")
+  lockedAt       DateTime?               @map("locked_at")
+  researchError  String?                 @map("research_error")
+  researchedAt   DateTime?               @map("researched_at")
+  /// Research record created for a bulk-outreach campaign; hidden from the Companies list.
+  campaignOnly   Boolean                 @default(false) @map("campaign_only")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  research         CompanyResearch?
+  sources          CompanySource[]
+  contracts        Contract[]
+  contacts         CompanyContact[]
+  draft            EmailDraft?
+  logs             ResearchLog[]
+  campaignContacts CampaignContact[]
+  bulkRows         CampaignContact[] @relation("BulkResearch")
+
+  @@index([userId, createdAt])
+  @@index([researchQueued, researchStatus])
+  @@map("companies")
+}
+
+model CompanyResearch {
+  id                 String         @id @default(cuid())
+  companyId          String         @unique @map("company_id")
+  status             ResearchStatus
+  industry           String?
+  summary            String?
+  relevantDepartment String?        @map("relevant_department")
+  procurementInfo    String?        @map("procurement_info")
+  vendorRequirements String?        @map("vendor_requirements")
+  /// Source URLs the summary fields were taken from.
+  summarySources     Json?          @map("summary_sources")
+  model              String?
+  researchedAt       DateTime       @default(now()) @map("researched_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_research")
+}
+
+model CompanySource {
+  id            String     @id @default(cuid())
+  companyId     String     @map("company_id")
+  url           String
+  title         String?
+  sourceType    SourceType @map("source_type")
+  httpStatus    Int?       @map("http_status")
+  robotsAllowed Boolean    @default(true) @map("robots_allowed")
+  excerpt       String?
+  fetchedAt     DateTime   @default(now()) @map("fetched_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, url])
+  @@map("company_sources")
+}
+
+model Contract {
+  id                 String   @id @default(cuid())
+  companyId          String   @map("company_id")
+  title              String
+  reference          String?
+  department         String?
+  publicationDate    String?  @map("publication_date")
+  closingDate        String?  @map("closing_date")
+  requirementSummary String?  @map("requirement_summary")
+  status             String?
+  sourceUrl          String   @map("source_url")
+  sourceTitle        String?  @map("source_title")
+  discoveredAt       DateTime @default(now()) @map("discovered_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  company Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  drafts  EmailDraft[]
+
+  @@index([companyId])
+  @@map("contracts")
+}
+
+model CompanyContact {
+  id             String                 @id @default(cuid())
+  companyId      String                 @map("company_id")
+  /// Exactly as published (or as typed in the upload).
+  email          String
+  contactName    String?                @map("contact_name")
+  department     String?
+  emailType      String                 @map("email_type")
+  sourceUrl      String?                @map("source_url")
+  sourceTitle    String?                @map("source_title")
+  sourceType     SourceType             @map("source_type")
+  confidence     EmailConfidence
+  status         ContactDiscoveryStatus
+  origin         ContactOrigin
+  isSelected     Boolean                @default(false) @map("is_selected")
+  discoveredAt   DateTime               @default(now()) @map("discovered_at")
+  verifiedAt     DateTime?              @map("verified_at")
+  userApprovedAt DateTime?              @map("user_approved_at")
+  /// Rejected by the user: never selected or sent to, and stays rejected when research runs again.
+  rejectedAt     DateTime?              @map("rejected_at")
+
+  company Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  drafts  EmailDraft[]
+
+  @@unique([companyId, email])
+  @@map("company_contacts")
+}
+
+model EmailDraft {
+  id               String      @id @default(cuid())
+  companyId        String      @unique @map("company_id")
+  contactId        String?     @map("contact_id")
+  contractId       String?     @map("contract_id")
+  originalBody     String      @map("original_body")
+  generatedSubject String?     @map("generated_subject")
+  generatedBody    String?     @map("generated_body")
+  editedByUser     Boolean     @default(false) @map("edited_by_user")
+  status           DraftStatus @default(DRAFT)
+  error            String?
+  model            String?
+  campaignId       String?     @map("campaign_id")
+  approvedAt       DateTime?   @map("approved_at")
+  rejectedAt       DateTime?   @map("rejected_at")
+  sentAt           DateTime?   @map("sent_at")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact          CompanyContact?   @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contract         Contract?         @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  campaignContacts CampaignContact[]
+
+  @@map("email_drafts")
+}
+
+model ResearchLog {
+  id            String   @id @default(cuid())
+  companyId     String   @map("company_id")
+  query         String
+  sourceUrl     String?  @map("source_url")
+  result        String
+  blockedReason String?  @map("blocked_reason")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@map("research_logs")
+}
+
+model SenderProfile {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  label       String
+  senderName  String   @map("sender_name")
+  designation String?
+  companyName String?  @map("company_name")
+  email       String?
+  phone       String?
+  website     String?
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+  templates CampaignTemplate[]
+
+  @@index([userId])
+  @@map("sender_profiles")
+}
+
+model CampaignTemplate {
+  id                  String      @id @default(cuid())
+  userId              String      @map("user_id")
+  name                String
+  body                String
+  subjectMode         SubjectMode @default(FIXED) @map("subject_mode")
+  subjectTemplate     String?     @map("subject_template")
+  senderProfileId     String?     @map("sender_profile_id")
+  aiPersonalization   Boolean     @default(false) @map("ai_personalization")
+  aiInstructions      String?     @map("ai_instructions")
+  productLineFallback String?     @map("product_line_fallback")
+  ccEmails            String[]    @default([]) @map("cc_emails")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  senderProfile SenderProfile? @relation(fields: [senderProfileId], references: [id], onDelete: SetNull)
+  campaigns     Campaign[]
+
+  @@index([userId])
+  @@map("campaign_templates")
+}
+
+model RateLimitBucket {
+  key         String   @id
+  count       Int
+  windowStart DateTime @map("window_start")
+
+  @@map("rate_limit_buckets")
+}

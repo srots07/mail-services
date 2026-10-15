@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 128" role="img" aria-label="Sorts">
+  <defs>
+    <linearGradient id="sorts-g" x1="118" y1="556" x2="899" y2="307" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9E00FB"/>
+      <stop offset="0.15" stop-color="#8307FC"/>
+      <stop offset="0.3" stop-color="#5524FC"/>
+      <stop offset="0.45" stop-color="#274EFB"/>
+      <stop offset="0.6" stop-color="#0D7AFC"/>
+      <stop offset="0.75" stop-color="#04A4FC"/>
+      <stop offset="0.9" stop-color="#03CCFC"/>
+      <stop offset="1" stop-color="#00E5FC"/>
+    </linearGradient>
+    <linearGradient id="sorts-w" x1="150" y1="0" x2="410" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8307FC"/>
+      <stop offset="0.5" stop-color="#274EFB"/>
+      <stop offset="1" stop-color="#03CCFC"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(-22.888 -8.986) scale(0.16954)">
+    <path fill="url(#sorts-g)" d="M584 231L189 584C178 595 170 611 170 630C170 656 191 677 217 677H633L588 714H188V801H630Q652 801 668 786L799 668A46 46 0 0 0 766 586H356L662 310L735 392L835 60L516 160Z"/>
+    <path fill="url(#sorts-g)" d="M578 438H855V537H465Z"/>
+  </g>
+  <text x="148" y="100" fill="url(#sorts-w)" font-family="Poppins, Montserrat, 'Segoe UI', Arial, sans-serif" font-size="96" font-weight="700" letter-spacing="-1">Sorts</text>
+</svg>

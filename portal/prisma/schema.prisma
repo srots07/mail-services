@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  PENDING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum Plan {
+  MONTHLY
+  YEARLY
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String?
+  passwordHash String        @map("password_hash")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  sessions     Session[]
+  subscription Subscription?
+  devices      Device[]
+
+  @@map("users")
+}
+
+model Session {
+  /// sha256 of the cookie token
+  id        String   @id
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  userId                 String             @unique @map("user_id")
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status                 SubscriptionStatus @default(TRIAL)
+  plan                   Plan?
+  trialEndsAt            DateTime?          @map("trial_ends_at")
+  currentPeriodEnd       DateTime?          @map("current_period_end")
+  razorpaySubscriptionId String?            @unique @map("razorpay_subscription_id")
+  cancelAtPeriodEnd      Boolean            @default(false) @map("cancel_at_period_end")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+  createdAt              DateTime           @default(now()) @map("created_at")
+
+  @@map("subscriptions")
+}
+
+model Device {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  /// sha256 of the device secret; the secret itself is only on the customer's PC
+  secretHash String    @map("secret_hash")
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model DeviceCode {
+  id               String    @id @default(cuid())
+  /// Short code the customer sees and confirms on the website, e.g. K7QX-2MPD
+  userCode         String    @unique @map("user_code")
+  /// sha256 of the secret code the desktop app polls with
+  deviceCodeHash   String    @unique @map("device_code_hash")
+  deviceName       String    @map("device_name")
+  expiresAt        DateTime  @map("expires_at")
+  approvedByUserId String?   @map("approved_by_user_id")
+  approvedAt       DateTime? @map("approved_at")
+  /// Set when the desktop app collected its device credentials (one time only)
+  deviceId         String?   @map("device_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@map("device_codes")
+}
+
+model WebhookEvent {
+  id         String   @id
+  event      String
+  receivedAt DateTime @default(now()) @map("received_at")
+
+  @@map("webhook_events")
+}

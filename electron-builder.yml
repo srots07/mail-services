@@ -1,0 +1,45 @@
+# appId must not change: it lets the installer upgrade pre-rename installs in place.
+appId: com.emailcampaignmanager.desktop
+productName: Sorts
+copyright: Sorts
+electronVersion: 44.6.0
+npmRebuild: false
+asar: true
+
+directories:
+  app: desktop
+  output: dist-desktop
+  # Not desktop/assets: that folder must stay inside the app (window and tray icon).
+  buildResources: desktop/build
+
+# The shell has no dependencies; the server bundle brings its own node_modules.
+files:
+  - "**/*"
+  - "!app-server{,/**/*}"
+  - "!node_modules{,/**/*}"
+
+# Spawned processes (Node server, PostgreSQL) cannot run from inside app.asar.
+# The server itself is copied to resources/server by scripts/desktop-after-pack.cjs.
+afterPack: scripts/desktop-after-pack.cjs
+extraResources:
+  - from: node_modules/@embedded-postgres/windows-x64/native
+    to: postgres
+    filter: ["**/*"]
+  - from: prisma/migrations
+    to: migrations
+    filter: ["**/*"]
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: desktop/assets/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Sorts
+  deleteAppDataOnUninstall: false

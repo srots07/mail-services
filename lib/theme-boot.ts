@@ -1,0 +1,2 @@
+/** Runs before paint so the saved theme does not flash. */
+export const themeBoot = `(function(){try{var t=localStorage.getItem("theme");var light=window.matchMedia("(prefers-color-scheme: light)").matches;var d=t==="light"||t==="dark"?t:(t==="system"?(light?"light":"dark"):"dark");var e=document.documentElement;e.dataset.theme=d;e.style.colorScheme=d;var n=localStorage.getItem("table-density");e.dataset.density=n==="compact"?"compact":"comfortable";}catch(err){document.documentElement.dataset.theme="dark";document.documentElement.dataset.density="comfortable";}})();`;

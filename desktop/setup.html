@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+    <title>Sorts setup</title>
+    <link rel="stylesheet" href="desktop.css" />
+  </head>
+  <body>
+    <main class="setup">
+      <header>
+        <span class="brand"><img src="assets/sorts-mark.svg" alt="" /><span class="wordmark">Sorts</span></span>
+        <span class="muted">First-run setup</span>
+      </header>
+      <h1 id="title">Set up Sorts</h1>
+      <p class="muted" id="intro">
+        Sorts runs entirely on this PC. Add your OpenRouter key (for AI personalisation) and your Google OAuth client (to send from your Gmail).
+        Keys are encrypted for your Windows account and never leave this computer except to call OpenRouter and Google.
+      </p>
+
+      <form id="form" autocomplete="off">
+        <section>
+          <h2>OpenRouter (AI)</h2>
+          <label>API key
+            <input id="openrouterApiKey" type="password" placeholder="sk-or-..." spellcheck="false" />
+          </label>
+          <small class="muted" id="openrouterHint">Create one at <a href="https://openrouter.ai/keys" data-external>openrouter.ai/keys</a>.</small>
+          <label>Model
+            <input id="openrouterModel" type="text" spellcheck="false" />
+          </label>
+        </section>
+
+        <section>
+          <h2>Google OAuth client (Gmail)</h2>
+          <label>Client ID
+            <input id="googleClientId" type="text" placeholder="xxxxx.apps.googleusercontent.com" spellcheck="false" />
+          </label>
+          <label>Client secret
+            <input id="googleClientSecret" type="password" placeholder="GOCSPX-..." spellcheck="false" />
+          </label>
+          <small class="muted" id="googleHint"></small>
+          <div class="redirect">
+            <span class="muted">Authorized redirect URI to add in Google Cloud:</span>
+            <code id="redirectUri"></code>
+            <button type="button" id="copy" class="link">Copy</button>
+          </div>
+          <small class="muted">
+            In <a href="https://console.cloud.google.com/apis/credentials" data-external>Google Cloud Console</a>: enable the Gmail API, create an OAuth client of type
+            <b>Web application</b>, and add the redirect URI above.
+          </small>
+        </section>
+
+        <p class="error" id="error" hidden></p>
+        <div class="actions">
+          <button type="button" id="skip" class="secondary">Skip for now</button>
+          <button type="submit" id="save" class="primary">Save keys and start Sorts</button>
+        </div>
+      </form>
+    </main>
+    <script src="setup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" />
+    <title>Connect account</title>
+    <link rel="stylesheet" href="desktop.css" />
+    <style>
+      .connect { padding: 26px 30px; text-align: center; }
+      .code { font: 600 30px/1.2 ui-monospace, Consolas, monospace; letter-spacing: 4px; margin: 14px 0; color: var(--accent); }
+      .status { min-height: 42px; margin: 12px 0 18px; }
+      .actions { justify-content: center; }
+    </style>
+  </head>
+  <body>
+    <main class="connect">
+      <span class="brand" style="margin-bottom: 14px"><img src="assets/sorts-mark.svg" alt="" /><span class="wordmark">Sorts</span></span>
+      <h1>Connect your Sorts subscription</h1>
+      <p class="muted" id="intro">Contacting the website...</p>
+      <div class="code" id="code" hidden></div>
+      <p class="status muted" id="status"></p>
+      <div class="actions">
+        <button type="button" id="open" class="primary" hidden>Open the website again</button>
+        <button type="button" id="close" class="secondary">Cancel</button>
+      </div>
+    </main>
+    <script src="connect.js"></script>
+  </body>
+</html>
