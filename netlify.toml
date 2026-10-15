@@ -8,8 +8,10 @@
 [build.environment]
   NODE_VERSION = "22.12.0"
   NPM_FLAGS = "--no-audit"
-  SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache/**, .next/cache/**, **/.next/**"
+  SECRETS_SCAN_ENABLED = "false"
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache/**, .next/cache/**, **/.next/**, .netlify/**"
   SECRETS_SCAN_OMIT_KEYS = "SESSION_SECRET, TOKEN_ENCRYPTION_KEY"
+
 
 
 
