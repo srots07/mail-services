@@ -67,7 +67,7 @@ export default async function SendingPage() {
         title="Sending & Delivery"
         description="Monitor real-time mail dispatch, active sending engine accounts, delivery metrics, and run test sends."
         actions={
-          <ButtonLink href="/settings#sending-account" variant="outline" size="sm">
+          <ButtonLink href="/sending/accounts" variant="outline" size="sm">
             <Mail className="h-4 w-4 mr-1.5" />
             Configure Accounts
           </ButtonLink>
@@ -121,7 +121,7 @@ export default async function SendingPage() {
         </div>
 
         {/* Quick Test Send Component */}
-        <QuickTestSend />
+        <QuickTestSend defaultSenderEmail={account?.email ?? ""} />
 
         {/* Active Sending Account Card */}
         <Card>
@@ -129,8 +129,8 @@ export default async function SendingPage() {
             title="Connected Sending Mailbox"
             description="The mailbox Sorts uses to dispatch outgoing cold emails and automated sequences."
             actions={
-              <ButtonLink href="/settings#sending-account" variant="outline" size="sm">
-                <span>Manage in Settings</span>
+              <ButtonLink href="/sending/accounts" variant="outline" size="sm">
+                <span>Manage Accounts</span>
                 <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
               </ButtonLink>
             }
@@ -167,7 +167,7 @@ export default async function SendingPage() {
                   Connect your SMTP account (e.g. Gmail App Password, Zoho, SendGrid) or Google Cloud OAuth to start sending.
                 </p>
                 <div className="pt-1">
-                  <ButtonLink href="/settings#sending-account" variant="primary" size="sm">
+                  <ButtonLink href="/sending/accounts" variant="primary" size="sm">
                     Connect Sending Account
                   </ButtonLink>
                 </div>

@@ -32,7 +32,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Sending",
     items: [
       { href: "/sending", label: "Delivery & Sent Mail", icon: Send, exact: true },
-      { href: "/settings#sending-account", label: "Sending Accounts", icon: Mail, exact: false },
+      { href: "/sending/accounts", label: "Sending Accounts", icon: Mail, exact: true },
     ],
   },
   { label: "Workspace", items: [{ href: "/settings", label: "Settings", icon: Settings, exact: true }] },
@@ -72,6 +72,7 @@ function crumbsFor(pathname: string, names: Map<string, string>): { href: string
   const campaigns = { href: "/campaigns", label: "Campaigns" };
   if (pathname === "/dashboard") return [{ href: "/dashboard", label: "Dashboard" }];
   if (pathname === "/sending") return [{ href: "/sending", label: "Sending & Delivery" }];
+  if (pathname === "/sending/accounts") return [{ href: "/sending", label: "Sending" }, { href: "/sending/accounts", label: "Sending Accounts" }];
   if (pathname === "/settings") return [{ href: "/settings", label: "Settings" }];
   if (pathname === "/campaigns/new") return [campaigns, { href: pathname, label: "New campaign" }];
   const step = pathname.match(/^\/campaigns\/([^/]+)(?:\/bulk\/([^/]+))?$/);
