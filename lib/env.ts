@@ -60,9 +60,9 @@ const schema = z.object({
   /** Direct UPI Payment settings (No gateway required) */
   UPI_ID: z.string().default("owner@upi"),
   UPI_NAME: z.string().default("Sorts Engine"),
-  UPI_AMOUNT_INR: z.coerce.number().default(85),
-  CREDITS_PER_PAYMENT: z.coerce.number().int().default(5),
-  FREE_TRIAL_CREDITS: z.coerce.number().int().default(5),
+  UPI_AMOUNT_INR: intFromEnv(85, 1, 100000),
+  CREDITS_PER_PAYMENT: intFromEnv(5, 1, 1000),
+  FREE_TRIAL_CREDITS: intFromEnv(5, 0, 1000),
 
   /** Subscription license (set by the desktop shell): signed license file, its public key, and the website. */
   LICENSE_FILE: z.string().default(""),
@@ -98,9 +98,17 @@ export function env(): ServerEnv {
   const e = parsed.success ? parsed.data : schema.parse({});
   const isProduction = e.NODE_ENV === "production";
   const desktopMode = e.DESKTOP_MODE.toLowerCase() === "true" && e.DESKTOP_TOKEN.length >= 32;
+  let dbUrl = e.DATABASE_URL.trim();
+  if ((dbUrl.startsWith('"') && dbUrl.endsWith('"')) || (dbUrl.startsWith("'") && dbUrl.endsWith("'"))) {
+    dbUrl = dbUrl.slice(1, -1).trim();
+  }
+  if (dbUrl.startsWith("DATABASE_URL=")) {
+    dbUrl = dbUrl.slice("DATABASE_URL=".length).trim();
+  }
   const appUrl = (e.APP_URL || process.env.URL || process.env.DEPLOY_PRIME_URL || "http://localhost:3000").replace(/\/+$/, "");
   cached = {
     ...e,
+    DATABASE_URL: dbUrl,
     APP_URL: appUrl,
     isProduction,
     // Mock providers are never allowed in production builds.

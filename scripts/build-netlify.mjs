@@ -3,7 +3,16 @@ import { execSync } from "node:child_process";
 console.log("[netlify-build] Step 1: Generating Prisma client...");
 execSync("npx prisma generate", { stdio: "inherit" });
 
-if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== "") {
+let dbUrl = process.env.DATABASE_URL?.trim() || "";
+if ((dbUrl.startsWith('"') && dbUrl.endsWith('"')) || (dbUrl.startsWith("'") && dbUrl.endsWith("'"))) {
+  dbUrl = dbUrl.slice(1, -1).trim();
+}
+if (dbUrl.startsWith("DATABASE_URL=")) {
+  dbUrl = dbUrl.slice("DATABASE_URL=".length).trim();
+}
+process.env.DATABASE_URL = dbUrl;
+
+if (dbUrl !== "") {
   console.log("[netlify-build] Step 2: DATABASE_URL detected. Syncing schema to cloud database...");
   try {
     execSync("npx prisma db push --accept-data-loss", { stdio: "inherit" });

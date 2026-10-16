@@ -20,6 +20,24 @@ export function assertSameOrigin(req: NextRequest): void {
   } catch {
     // ignore malformed APP_URL; request origin is still accepted
   }
+
+  // Netlify, Vercel, and reverse proxies forward the original client host
+  const fwdHost = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const fwdProto = req.headers.get("x-forwarded-proto") || "https";
+  if (fwdHost) {
+    allowed.add(`${fwdProto}://${fwdHost}`);
+    allowed.add(`https://${fwdHost}`);
+    allowed.add(`http://${fwdHost}`);
+  }
+
+  // Netlify environment URLs
+  if (process.env.URL) {
+    try { allowed.add(new URL(process.env.URL).origin); } catch {}
+  }
+  if (process.env.DEPLOY_PRIME_URL) {
+    try { allowed.add(new URL(process.env.DEPLOY_PRIME_URL).origin); } catch {}
+  }
+
   const origin = req.headers.get("origin");
   if (origin) {
     if (!allowed.has(origin)) throw new AppError("CSRF", "Request blocked: cross-site request detected.");
