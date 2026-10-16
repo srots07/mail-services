@@ -47,7 +47,7 @@ export function toErrorResponse(err: unknown): NextResponse {
     if (err.code === "P2025") {
       return NextResponse.json({ error: { code: "NOT_FOUND", message: "The requested record was not found." } }, { status: 404 });
     }
-    if (err.code === "P2021" || err.code === "P2010") {
+    if (err.code === "P2021" || (err.code === "P2010" && err.message.includes("does not exist"))) {
       console.error("[api] database schema missing", err.message);
       return NextResponse.json(
         { error: { code: "DATABASE_SCHEMA", message: "Database tables are missing. Please run 'npx prisma db push' to create your database tables." } },

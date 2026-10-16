@@ -12,17 +12,22 @@ function createClient(): PrismaClient {
   if (!rawUrl) {
     throw new Error("DATABASE_URL is not configured. See the setup instructions in README.md.");
   }
-  const isCloud = rawUrl.includes("supabase") || rawUrl.includes("neon.tech") || rawUrl.includes("pooler") || rawUrl.includes("sslmode=");
   let cleanUrl = rawUrl;
-  // Automatically switch Supabase pooler from session mode (:5432 - max 15 conns) to transaction mode (:6543 - unlimited pool)
-  if (cleanUrl.includes("pooler.supabase.com:5432")) {
-    cleanUrl = cleanUrl.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543");
-    if (!cleanUrl.includes("pgbouncer=true")) {
-      cleanUrl += (cleanUrl.includes("?") ? "&" : "?") + "pgbouncer=true";
+  let isCloud = false;
+  try {
+    const u = new URL(rawUrl);
+    isCloud = u.hostname.includes("supabase") || u.hostname.includes("neon.tech") || u.hostname.includes("pooler");
+    if (u.hostname.includes("pooler.supabase.com")) {
+      u.port = "6543";
+      u.searchParams.set("pgbouncer", "true");
     }
+    // Remove sslmode so pg doesn't override rejectUnauthorized
+    u.searchParams.delete("sslmode");
+    cleanUrl = u.toString();
+  } catch {
+    cleanUrl = rawUrl;
   }
-  // Strip ?sslmode=... so pg doesn't override rejectUnauthorized: false
-  cleanUrl = isCloud ? cleanUrl.replace(/[?&]sslmode=[^&]+/g, "").replace(/\?$/, "") : cleanUrl;
+
   const pool = new pg.Pool({
     connectionString: cleanUrl,
     max: isCloud ? Math.min(max, 3) : max,
