@@ -14,5 +14,6 @@
   SECRETS_SCAN_ENABLED = "false"
   SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache/**, .next/cache/**, **/.next/**, .netlify/**"
   SECRETS_SCAN_OMIT_KEYS = "SESSION_SECRET, TOKEN_ENCRYPTION_KEY, DATABASE_URL"
-  DATABASE_URL = "postgresql://postgres.jnbkujuekofcabqzdksk:UAdMSkZhHjlOhw2m@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require"
   APP_URL = "https://srots-mail.netlify.app"
+  # DATABASE_URL must be set in Netlify UI: Site Settings → Environment Variables
+  # Do NOT put credentials in this file — it is committed to git.

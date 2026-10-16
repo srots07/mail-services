@@ -49,37 +49,22 @@ export function toErrorResponse(err: unknown): NextResponse {
     }
     if (err.code === "P2021" || (err.code === "P2010" && err.message.includes("does not exist"))) {
       console.error("[api] database schema missing", err.message);
-      return NextResponse.json(
-        { error: { code: "DATABASE_SCHEMA", message: "Database tables are missing. Please run 'npx prisma db push' to create your database tables." } },
-        { status: 503 },
-      );
+      throw new AppError("DATABASE_SCHEMA", "Database tables are missing. Please run 'npx prisma db push' to create your database tables.");
     }
   }
   if (err instanceof Prisma.PrismaClientInitializationError) {
     console.error("[api] database unavailable", redactString(err.message));
-    return NextResponse.json(
-      { error: { code: "DATABASE", message: "Cannot connect to the database. Please verify your DATABASE_URL in Netlify environment variables." } },
-      { status: 503 },
-    );
+    throw new AppError("DATABASE", "Cannot connect to the database. Please verify your DATABASE_URL in Netlify environment variables.");
   }
   if (err instanceof Error) {
     if (err.message.includes("DATABASE_URL is not configured")) {
-      return NextResponse.json(
-        { error: { code: "CONFIG_ERROR", message: "DATABASE_URL is not set in Netlify environment variables." } },
-        { status: 503 },
-      );
+      throw new AppError("CONFIG_ERROR", "DATABASE_URL is not set in Netlify environment variables.");
     }
     if (err.message.includes("relation") && err.message.includes("does not exist")) {
-      return NextResponse.json(
-        { error: { code: "DATABASE_SCHEMA", message: "Database tables are not initialized. Please run 'npx prisma db push'." } },
-        { status: 503 },
-      );
+      throw new AppError("DATABASE_SCHEMA", "Database tables are not initialized. Please run 'npx prisma db push'.");
     }
     if (err.message.includes("password authentication failed") || err.message.includes("ETIMEDOUT") || err.message.includes("ECONNREFUSED")) {
-      return NextResponse.json(
-        { error: { code: "DATABASE", message: "Database connection failed. Please check your database host and password in DATABASE_URL." } },
-        { status: 503 },
-      );
+      throw new AppError("DATABASE", "Database connection failed. Please check your database host and password in DATABASE_URL.");
     }
   }
   console.error("[api] unhandled error", err instanceof Error ? redactString(err.stack ?? err.message) : err);

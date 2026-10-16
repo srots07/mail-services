@@ -105,10 +105,7 @@ export function env(): ServerEnv {
   if (dbUrl.startsWith("DATABASE_URL=")) {
     dbUrl = dbUrl.slice("DATABASE_URL=".length).trim();
   }
-  const FALLBACK_DB_URL = "postgresql://postgres.jnbkujuekofcabqzdksk:UAdMSkZhHjlOhw2m@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require";
-  if (!dbUrl || !dbUrl.startsWith("postgres")) {
-    dbUrl = FALLBACK_DB_URL;
-  }
+  // No hardcoded fallback: a missing DATABASE_URL must fail clearly so misconfiguration is visible.
   const appUrl = (e.APP_URL || process.env.URL || process.env.DEPLOY_PRIME_URL || "https://srots-mail.netlify.app").replace(/\/+$/, "");
   cached = {
     ...e,

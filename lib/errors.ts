@@ -13,6 +13,8 @@ export type ErrorCode =
   | "PROVIDER_ERROR"
   | "DUPLICATE_SEND"
   | "DATABASE"
+  | "DATABASE_SCHEMA"
+  | "CONFIG_ERROR"
   | "PAYMENT_REQUIRED"
   | "INTERNAL";
 
@@ -32,6 +34,8 @@ const STATUS: Record<ErrorCode, number> = {
   PROVIDER_AUTH: 502,
   PROVIDER_ERROR: 502,
   DATABASE: 503,
+  DATABASE_SCHEMA: 503,
+  CONFIG_ERROR: 503,
   INTERNAL: 500,
 };
 
