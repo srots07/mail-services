@@ -27,6 +27,9 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
 
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!open) return;
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -37,12 +40,19 @@ export function Modal({
             (el) => !el.hasAttribute("disabled") && !el.getAttribute("aria-hidden"),
           )
         : [];
-    const initial = focusable()[0] ?? panel;
-    initial?.focus();
+    
+    // Auto-focus first input/select in modal if focus is not already inside
+    const firstInput = panel?.querySelector<HTMLElement>(
+      'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])',
+    );
+    const initial = firstInput ?? focusable()[0] ?? panel;
+    if (panel && !panel.contains(document.activeElement)) {
+      initial?.focus();
+    }
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab" || !panel) return;
@@ -71,7 +81,7 @@ export function Modal({
       document.body.style.overflow = prev;
       previousFocus.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || typeof document === "undefined") return null;
   const width = { sm: "max-w-md", md: "max-w-xl", lg: "max-w-3xl", xl: "max-w-5xl" }[size];

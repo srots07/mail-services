@@ -731,3 +731,19 @@ html[data-density="comfortable"] .data-table :is(th, td) {
     transform: none !important;
   }
 }
+
+/* Ensure autofill doesn't break input text and background styling while typing */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--fg) !important;
+  caret-color: var(--fg);
+  transition: background-color 5000s ease-in-out 0s;
+}
+

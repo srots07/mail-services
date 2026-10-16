@@ -53,9 +53,10 @@ export function EmailAccountCard({
   const [fromEmail, setFromEmail] = useState("");
   const [fromName, setFromName] = useState("");
   const [host, setHost] = useState("smtp.gmail.com");
-  const [port, setPort] = useState(465);
+  const [port, setPort] = useState<number | string>(465);
   const [secure, setSecure] = useState(true);
   const [username, setUsername] = useState("");
+  const [usernameTouched, setUsernameTouched] = useState(false);
   const [password, setPassword] = useState("");
   const [testRecipient, setTestRecipient] = useState("");
   const [testingSend, setTestingSend] = useState(false);
@@ -340,9 +341,14 @@ export function EmailAccountCard({
                 placeholder="you@company.com"
                 value={fromEmail}
                 onChange={(e) => {
-                  setFromEmail(e.target.value);
-                  if (!username) setUsername(e.target.value);
-                  if (!testRecipient) setTestRecipient(e.target.value);
+                  const val = e.target.value;
+                  setFromEmail(val);
+                  if (!usernameTouched || username === fromEmail) {
+                    setUsername(val);
+                  }
+                  if (!testRecipient || testRecipient === fromEmail) {
+                    setTestRecipient(val);
+                  }
                 }}
                 required
               />
@@ -376,7 +382,7 @@ export function EmailAccountCard({
                   type="number"
                   placeholder="465"
                   value={port}
-                  onChange={(e) => setPort(Number(e.target.value))}
+                  onChange={(e) => setPort(e.target.value === "" ? "" : Number(e.target.value))}
                   required
                 />
               </Field>
@@ -389,7 +395,10 @@ export function EmailAccountCard({
                 id="smtpUser"
                 placeholder="you@company.com"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setUsernameTouched(true);
+                }}
               />
             </Field>
             <Field label="Password / App Password" htmlFor="smtpPass">
