@@ -23,7 +23,6 @@ export function GroqKeyCard({ initialStatus }: { initialStatus?: GroqStatus }) {
   const toast = useToast();
 
   const [status, setStatus] = useState<GroqStatus | null>(initialStatus ?? null);
-  const [loading, setLoading] = useState(!initialStatus);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; latencyMs?: number; error?: string } | null>(null);
@@ -32,24 +31,21 @@ export function GroqKeyCard({ initialStatus }: { initialStatus?: GroqStatus }) {
   const [selectedModel, setSelectedModel] = useState(initialStatus?.model ?? "openai/gpt-oss-120b");
   const [showKey, setShowKey] = useState(false);
 
-  const refreshStatus = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await api<GroqStatus>("/api/settings/groq");
-      setStatus(res);
-      setSelectedModel(res.model);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     if (!initialStatus) {
-      void refreshStatus();
+      let active = true;
+      api<GroqStatus>("/api/settings/groq")
+        .then((res) => {
+          if (!active) return;
+          setStatus(res);
+          setSelectedModel(res.model);
+        })
+        .catch(() => undefined);
+      return () => {
+        active = false;
+      };
     }
-  }, [initialStatus, refreshStatus]);
+  }, [initialStatus]);
 
   async function handleTestCurrentKey() {
     if (!status?.configured) return;

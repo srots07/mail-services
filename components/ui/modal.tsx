@@ -28,7 +28,9 @@ export function Modal({
   const previousFocus = useRef<HTMLElement | null>(null);
 
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;

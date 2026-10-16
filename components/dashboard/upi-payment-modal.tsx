@@ -42,17 +42,19 @@ export function UpiPaymentModal({
   const [successState, setSuccessState] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setLoading(true);
-      setSuccessState(false);
-      setUtr("");
-      setScreenshotData(null);
-      setFileName("");
-      api<{ credits: UserCredits }>("/api/payments")
-        .then((res) => setCredits(res.credits))
-        .catch(() => undefined)
-        .finally(() => setLoading(false));
-    }
+    if (!open) return;
+    let active = true;
+    api<{ credits: UserCredits }>("/api/payments")
+      .then((res) => {
+        if (active) setCredits(res.credits);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [open]);
 
   function copyUpiId() {

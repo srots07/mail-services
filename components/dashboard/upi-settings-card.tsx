@@ -52,8 +52,8 @@ export function UpiSettingsCard() {
   const [amountInr, setAmountInr] = useState("85");
   const [viewScreenshot, setViewScreenshot] = useState<string | null>(null);
 
-  function loadData() {
-    setLoading(true);
+  function loadData(showLoading = false) {
+    if (showLoading) setLoading(true);
     api<PaymentData>("/api/payments")
       .then((res) => {
         setData(res);
@@ -66,7 +66,22 @@ export function UpiSettingsCard() {
   }
 
   useEffect(() => {
-    loadData();
+    let active = true;
+    api<PaymentData>("/api/payments")
+      .then((res) => {
+        if (!active) return;
+        setData(res);
+        setUpiId(res.credits.upiId);
+        setUpiName(res.credits.upiName);
+        setAmountInr(String(res.credits.amountInr));
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function handleSave(e: React.FormEvent) {

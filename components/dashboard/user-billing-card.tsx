@@ -34,8 +34,8 @@ export function UserBillingCard() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
-  function loadData() {
-    setLoading(true);
+  function loadData(showLoading = false) {
+    if (showLoading) setLoading(true);
     api<PaymentData>("/api/payments")
       .then((res) => setData(res))
       .catch(() => undefined)
@@ -43,7 +43,18 @@ export function UserBillingCard() {
   }
 
   useEffect(() => {
-    loadData();
+    let active = true;
+    api<PaymentData>("/api/payments")
+      .then((res) => {
+        if (active) setData(res);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const remaining = data?.credits?.remainingCredits ?? 0;
