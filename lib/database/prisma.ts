@@ -8,13 +8,15 @@ import pg from "pg";
 const globalForPrisma = globalThis as unknown as { __prisma?: PrismaClient };
 
 function createClient(): PrismaClient {
-  const { DATABASE_URL: url, DATABASE_POOL_MAX: max } = env();
-  if (!url) {
+  const { DATABASE_URL: rawUrl, DATABASE_POOL_MAX: max } = env();
+  if (!rawUrl) {
     throw new Error("DATABASE_URL is not configured. See the setup instructions in README.md.");
   }
-  const isCloud = url.includes("supabase") || url.includes("neon.tech") || url.includes("pooler") || url.includes("sslmode=require");
+  const isCloud = rawUrl.includes("supabase") || rawUrl.includes("neon.tech") || rawUrl.includes("pooler") || rawUrl.includes("sslmode=");
+  // Strip ?sslmode=... from connection string so pg doesn't override rejectUnauthorized: false
+  const cleanUrl = isCloud ? rawUrl.replace(/[?&]sslmode=[^&]+/g, "").replace(/\?$/, "") : rawUrl;
   const pool = new pg.Pool({
-    connectionString: url,
+    connectionString: cleanUrl,
     max,
     ssl: isCloud ? { rejectUnauthorized: false } : undefined,
   });
